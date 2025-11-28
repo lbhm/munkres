@@ -676,3 +676,93 @@ def test_unsolvable_float() -> None:
     ]
     with pytest.raises(UnsolvableMatrixError):
         m.compute(matrix)
+
+
+def test_main_example_square_1() -> None:
+    """Test square matrix example from main."""
+    matrix = [[400, 150, 400], [400, 450, 600], [300, 225, 300]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(850)
+
+
+def test_main_example_rectangular_1() -> None:
+    """Test rectangular matrix example from main."""
+    matrix = [[400, 150, 400, 1], [400, 450, 600, 2], [300, 225, 300, 3]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(452)
+
+
+def test_main_example_square_2() -> None:
+    """Test square matrix example from main."""
+    matrix = [[10, 10, 8], [9, 8, 1], [9, 7, 4]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(18)
+
+
+def test_main_example_square_2_float() -> None:
+    """Test square matrix with float values from main."""
+    matrix = [[10.1, 10.2, 8.3], [9.4, 8.5, 1.6], [9.7, 7.8, 4.9]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(19.5)
+
+
+def test_main_example_rectangular_2() -> None:
+    """Test rectangular matrix example from main."""
+    matrix = [[10, 10, 8, 11], [9, 8, 1, 1], [9, 7, 4, 10]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(15)
+
+
+def test_main_example_rectangular_2_float() -> None:
+    """Test rectangular matrix with float values from main."""
+    matrix = [[10.01, 10.02, 8.03, 11.04], [9.05, 8.06, 1.07, 1.08], [9.09, 7.1, 4.11, 10.12]]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(15.2)
+
+
+def test_main_example_rectangular_disallowed() -> None:
+    """Test rectangular matrix with DISALLOWED from main."""
+    matrix: MatrixLike = [
+        [4, 5, 6, DISALLOWED],
+        [1, 9, 12, 11],
+        [DISALLOWED, 5, 4, DISALLOWED],
+        [12, 12, 12, 10],
+    ]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(20)
+
+
+def test_main_example_rectangular_disallowed_float() -> None:
+    """Test rectangular matrix with DISALLOWED and float values from main."""
+    matrix = [
+        [4.001, 5.002, 6.003, DISALLOWED],
+        [1.004, 9.005, 12.006, 11.007],
+        [DISALLOWED, 5.008, 4.009, DISALLOWED],
+        [12.01, 12.011, 12.012, 10.013],
+    ]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(20.028)
+
+
+def test_main_example_forced_pairings() -> None:
+    """Test DISALLOWED to force pairings from main."""
+    matrix = [
+        [1, DISALLOWED, DISALLOWED, DISALLOWED],
+        [DISALLOWED, 2, DISALLOWED, DISALLOWED],
+        [DISALLOWED, DISALLOWED, 3, DISALLOWED],
+        [DISALLOWED, DISALLOWED, DISALLOWED, 4],
+    ]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(10)
+
+
+def test_main_example_forced_pairings_float() -> None:
+    """Test DISALLOWED to force pairings with float values from main."""
+    matrix = [
+        [1.1, DISALLOWED, DISALLOWED, DISALLOWED],
+        [DISALLOWED, 2.2, DISALLOWED, DISALLOWED],
+        [DISALLOWED, DISALLOWED, 3.3, DISALLOWED],
+        [DISALLOWED, DISALLOWED, DISALLOWED, 4.4],
+    ]
+    cost = _get_cost(matrix)
+    assert cost == pytest.approx(11.0)
