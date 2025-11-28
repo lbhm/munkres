@@ -40,18 +40,6 @@ class Munkres:
     row_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
     col_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
 
-    def pad_matrix(self, matrix: Matrix, pad_value: int = 0) -> Matrix:
-        """Pad a possibly non-square matrix to make it square."""
-        rows, cols = matrix.shape
-        size = max(rows, cols)
-
-        # Pad to square matrix
-        if rows == size and cols == size:
-            return matrix
-
-        pad_width = ((0, size - rows), (0, size - cols))
-        return np.pad(matrix, pad_width, mode="constant", constant_values=pad_value)
-
     def compute(self, cost_matrix: ArrayLike) -> list[tuple[int, int]]:
         """Return the indexes for the lowest-cost assignments.
 
@@ -75,7 +63,7 @@ class Munkres:
         if cost_matrix_arr.ndim != 2:  # noqa: PLR2004
             raise ValueError("Input matrix must be 2D.")
 
-        self.C = self.pad_matrix(cost_matrix_arr)
+        self.C = pad_matrix(cost_matrix_arr)
         self.n = len(self.C)
         self.Z0_r = 0
         self.Z0_c = 0
@@ -306,6 +294,27 @@ class Munkres:
     def __erase_primes(self) -> None:
         """Erase all prime markings."""
         self.marked[self.marked == PRIMED] = 0
+
+
+def pad_matrix(matrix: Matrix, pad_value: int = 0) -> Matrix:
+    """Pad a possibly non-square matrix to make it square.
+
+    Args:
+        matrix: The matrix to pad.
+        pad_value: The value to use for padding. Defaults to 0.
+
+    Returns:
+        The padded square matrix.
+    """
+    rows, cols = matrix.shape
+    size = max(rows, cols)
+
+    # Pad to square matrix
+    if rows == size and cols == size:
+        return matrix
+
+    pad_width = ((0, size - rows), (0, size - cols))
+    return np.pad(matrix, pad_width, mode="constant", constant_values=pad_value)
 
 
 def make_cost_matrix[T: int | float](
