@@ -18,6 +18,8 @@ m = Munkres()
 
 def _get_cost(matrix: Sequence[Sequence[int | float]] | Matrix) -> int | float:
     indices = m.compute(matrix)
+    if isinstance(matrix, np.ndarray):
+        return sum(matrix[row, column] for row, column in indices)  # type: ignore[no-any-return]
     return sum(matrix[row][column] for row, column in indices)
 
 

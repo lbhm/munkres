@@ -12,7 +12,7 @@ from collections.abc import Callable
 import numpy as np
 from numpy.typing import ArrayLike
 
-type IntMatrix = np.ndarray[tuple[int, int], np.dtype[np.int32]]
+type IndexMatrix = np.ndarray[tuple[int, int], np.dtype[np.intp]]
 type Matrix = np.ndarray[tuple[int, int], np.dtype[np.floating | np.integer]]
 
 
@@ -35,8 +35,8 @@ class Munkres:
     n: int
     Z0_r: int
     Z0_c: int
-    marked: IntMatrix
-    path: IntMatrix
+    marked: IndexMatrix
+    path: IndexMatrix
     row_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
     col_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
 
@@ -67,8 +67,8 @@ class Munkres:
         self.n = len(self.C)
         self.Z0_r = 0
         self.Z0_c = 0
-        self.path = np.full((self.n * 2, 2), 0, dtype=np.int32)
-        self.marked = np.full((self.n, self.n), 0, dtype=np.int32)
+        self.path = np.full((self.n * 2, 2), 0, dtype=np.intp)
+        self.marked = np.full((self.n, self.n), 0, dtype=np.intp)
         self.__reset_covers()
 
         done = False
@@ -128,9 +128,8 @@ class Munkres:
         If K columns are covered, the starred zeros describe a complete set of unique
         assignments. In this case, go to DONE; otherwise go to Step 4.
         """
-        # Find columns with starred zeros using vectorized operation
         starred_cols = np.any(self.marked == STARRED, axis=0)
-        self.col_covered[starred_cols & ~self.col_covered] = True
+        self.col_covered[starred_cols] = True
         count = np.sum(starred_cols)
 
         return 7 if count >= self.n else 4
@@ -261,7 +260,7 @@ class Munkres:
         Returns -1 if that row has no starred element.
         """
         cols = np.where(self.marked[row] == STARRED)[0]
-        return cols[0] if len(cols) > 0 else -1
+        return int(cols[0]) if len(cols) > 0 else -1
 
     def __find_star_in_col(self, col: int) -> int:
         """Return the row index of the first starred element in the column.
@@ -269,7 +268,7 @@ class Munkres:
         Returns -1 if that column has no starred element.
         """
         rows = np.where(self.marked[:, col] == STARRED)[0]
-        return rows[0] if len(rows) > 0 else -1
+        return int(rows[0]) if len(rows) > 0 else -1
 
     def __find_prime_in_row(self, row: int) -> int:
         """Return the column index of the first primed element in the row.
@@ -277,9 +276,9 @@ class Munkres:
         Returns -1 if that row has no primed element.
         """
         cols = np.where(self.marked[row] == PRIMED)[0]
-        return cols[0] if len(cols) > 0 else -1
+        return int(cols[0]) if len(cols) > 0 else -1
 
-    def __convert_path(self, path: IntMatrix, count: int) -> None:
+    def __convert_path(self, path: IndexMatrix, count: int) -> None:
         for i in range(count + 1):
             if self.marked[path[i, 0], path[i, 1]] == STARRED:
                 self.marked[path[i, 0], path[i, 1]] = 0
@@ -296,7 +295,7 @@ class Munkres:
         self.marked[self.marked == PRIMED] = 0
 
 
-def pad_matrix(matrix: Matrix, pad_value: int = 0) -> Matrix:
+def pad_matrix(matrix: Matrix, pad_value: float = 0) -> Matrix:
     """Pad a possibly non-square matrix to make it square.
 
     Args:
@@ -340,7 +339,7 @@ def make_cost_matrix[T: int | float](
         inversion_function: The function to use to invert each entry in the profit matrix.
 
     Returns:
-        A new matrix representing the inversion of `profix_matrix`.
+        A new matrix representing the inversion of `profit_matrix`.
     """
     arr = np.asarray(profit_matrix)
     if arr.ndim != 2:  # noqa: PLR2004
@@ -350,4 +349,4 @@ def make_cost_matrix[T: int | float](
         maximum = np.max(arr)
         return maximum - arr  # type: ignore[no-any-return]
 
-    return np.asarray([[inversion_function(value) for value in row] for row in arr])
+    return np.vectorize(inversion_function)(arr)  # type: ignore[no-any-return]

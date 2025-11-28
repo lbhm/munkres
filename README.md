@@ -2,8 +2,11 @@
 
 This repository contains a fork of the `munkres` packages by Brian M. Clapper.
 The original repository can be found at <https://github.com/bmc/munkres>.
-The fork is API compatible with the original package, so the documentation at
+The fork is (mostly) API-compatible with the original package, so the documentation at
 <https://software.clapper.org/munkres/api/index.html> still applies.
+
+> [!IMPORTANT]
+> This fork ported the implementation to Numpy and does not support irregular matrices.
 
 ## Introduction
 
@@ -38,6 +41,7 @@ uv pip install git+https://github.com/lbhm/munkres
 ## Copyright
 
 &copy; 2008-2019 Brian M. Clapper
+
 &copy; 2025 Lennart Behme
 
 ## License
