@@ -9,7 +9,7 @@ description = "Munkres (Hungarian) algorithm for the Assignment Problem"
 readme = "README.md"
 authors = [
     { name = "Brian Clapper", email = "bmc@clapper.org" },
-    { name = "Lennart Behme", email = "lennart.behme@tu-berlin.de"}
+    { name = "Lennart Behme", email = "lennart.behme@tu-berlin.de" },
 ]
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -22,22 +22,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = [
-    "numpy >= 2.0",
-]
+dependencies = ["numpy >= 2.0"]
 
 [project.urls]
-Homepage = "https://TODO"
-
-
+Homepage = "https://github.com/lbhm/munkres"
+Documentation = "https://software.clapper.org/munkres/api/index.html"
 
 [dependency-groups]
-dev = [
-    "mypy>=1.15.0",
-    "pdoc>=15.0",
-    "pre-commit>=4.2.0",
-    "pytest>=9.0.1",
-]
+dev = ["mypy>=1.15.0", "pdoc>=15.0", "pre-commit>=4.2.0", "pytest>=9.0.1"]
 
 [tool.ruff]
 line-length = 99
@@ -49,28 +41,18 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "AIR",     # airflow
-    "ANN401",  # any-return
-    "ARG",     # flake8-unused-arguments
     "COM812",  # missing-trailing-comma
     "CPY",     # flake8-copyright
     "D1",      # pydocstyle undocumented-*
-    "DJ",      # flake8-django
     "DOC",     # pydoclint
     "EM",      # flake8-errmsg
-    "ERA",     # eradicate
-    "FBT",     # flake8-boolean-trap
-    "FIX",     # flake8-fixme
-    "FURB140", # reimplemented-starmap
-    "PLR09",   # pylint too-many-*
-    "PLR6301", # no-self-use
-    "S101",    # assert
-    "SIM105",  # suppressible-exception
-    "TD",      # flake8-todos
     "TRY003",  # raise-vanilla-args
 ]
 isort.split-on-trailing-comma = false
 preview = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**" = ["E501", "S101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

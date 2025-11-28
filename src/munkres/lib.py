@@ -7,13 +7,13 @@ solving the Assignment Problem.
 For complete usage documentation, see https://software.clapper.org/munkres/.
 """
 
-import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
-type AnyNum = int | float
-type Matrix = list[list[AnyNum]]
-type MatrixLike = Sequence[Sequence[AnyNum]]
-type IntMatrix = list[list[int]]
+import numpy as np
+from numpy.typing import ArrayLike
+
+type IndexMatrix = np.ndarray[tuple[int, int], np.dtype[np.intp]]
+type Matrix = np.ndarray[tuple[int, int], np.dtype[np.floating | np.integer]]
 
 
 DISALLOWED = float("nan")
@@ -31,54 +31,16 @@ class Munkres:
     See the module documentation for usage instructions and background.
     """
 
-    def __init__(self) -> None:
-        """Initialize the solver state."""
-        self.C: Matrix = []
-        self.row_covered: list[bool] = []
-        self.col_covered: list[bool] = []
-        self.n = 0
-        self.Z0_r = 0
-        self.Z0_c = 0
-        self.marked: IntMatrix = []
-        self.path: IntMatrix = []
-        self.original_length = 0
-        self.original_width = 0
+    C: Matrix
+    n: int
+    Z0_r: int
+    Z0_c: int
+    marked: IndexMatrix
+    path: IndexMatrix
+    row_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
+    col_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
 
-    def pad_matrix(self, matrix: MatrixLike, pad_value: int = 0) -> Matrix:
-        """Pad a possibly non-square matrix to make it square.
-
-        **Parameters**
-
-        - `matrix` (list of lists of numbers): matrix to pad
-        - `pad_value` (`int`): value to use to pad the matrix
-
-        **Returns**
-
-        a new, possibly padded, matrix
-        """
-        max_columns = 0
-        total_rows = len(matrix)
-
-        for row in matrix:
-            max_columns = max(max_columns, len(row))
-
-        total_rows = max(max_columns, total_rows)
-
-        new_matrix: Matrix = []
-        for row in matrix:
-            row_len = len(row)
-            new_row = list(row)
-            if total_rows > row_len:
-                # Row too short. Pad it.
-                new_row += [pad_value] * (total_rows - row_len)
-            new_matrix.append(new_row)
-
-        while len(new_matrix) < total_rows:
-            new_matrix.append([pad_value] * total_rows)
-
-        return new_matrix
-
-    def compute(self, cost_matrix: MatrixLike) -> Sequence[tuple[int, int]]:
+    def compute(self, cost_matrix: ArrayLike) -> list[tuple[int, int]]:
         """Return the indexes for the lowest-cost assignments.
 
         Returns a list of `(row, column)` tuples that can be used to traverse the
@@ -87,29 +49,27 @@ class Munkres:
         **WARNING**: This code handles square and rectangular matrices. It
         does *not* handle irregular matrices.
 
-        **Parameters**
+        Args:
+            cost_matrix (list of lists of numbers): The cost matrix. If this
+                cost matrix is not square, it will be padded with zeros, via a call
+                to `pad_matrix()`. (This method does *not* modify the caller's
+                matrix. It operates on a copy of the matrix.)
 
-        - `cost_matrix` (list of lists of numbers): The cost matrix. If this
-          cost matrix is not square, it will be padded with zeros, via a call
-          to `pad_matrix()`. (This method does *not* modify the caller's
-          matrix. It operates on a copy of the matrix.)
-
-
-        **Returns**
-
-        A list of `(row, column)` tuples that describe the lowest cost path
-        through the matrix.
+        Returns:
+            A list of `(row, column)` tuples that describe the lowest cost path
+            through the matrix.
         """
-        self.C = self.pad_matrix(cost_matrix)
+        cost_matrix_arr: Matrix = np.asarray(cost_matrix)
+        if cost_matrix_arr.ndim != 2:  # noqa: PLR2004
+            raise ValueError("Input matrix must be 2D.")
+
+        self.C = pad_matrix(cost_matrix_arr)
         self.n = len(self.C)
-        self.original_length = len(cost_matrix)
-        self.original_width = len(cost_matrix[0])
-        self.row_covered = [False for _ in range(self.n)]
-        self.col_covered = [False for _ in range(self.n)]
         self.Z0_r = 0
         self.Z0_c = 0
-        self.path = self.__make_int_matrix(self.n * 2, 0)
-        self.marked = self.__make_int_matrix(self.n, 0)
+        self.path = np.full((self.n * 2, 2), 0, dtype=np.intp)
+        self.marked = np.full((self.n, self.n), 0, dtype=np.intp)
+        self.__reset_covers()
 
         done = False
         step = 1
@@ -131,47 +91,35 @@ class Munkres:
                 done = True
 
         # Look for the starred columns
-        return [
-            (i, j)
-            for i in range(self.original_length)
-            for j in range(self.original_width)
-            if self.marked[i][j] == STARRED
-        ]
-
-    def __make_int_matrix(self, n: int, val: int) -> IntMatrix:
-        """Create an n x n matrix populated with the provided value."""
-        matrix: IntMatrix = []
-        for _ in range(n):
-            matrix.append([val for _ in range(n)])
-        return matrix
+        shape = cost_matrix_arr.shape
+        rows, cols = np.where(self.marked[: shape[0], : shape[1]] == STARRED)
+        return list(zip(rows.tolist(), cols.tolist(), strict=True))
 
     def __step1(self) -> int:
         """Normalize rows by subtracting their minimum element."""
-        n = self.n
-        for i in range(n):
-            vals = [x for x in self.C[i] if x is not DISALLOWED]
-            if len(vals) == 0:
-                # All values in this row are DISALLOWED. This matrix is unsolvable.
-                raise UnsolvableMatrixError(f"Row {i} is entirely DISALLOWED.")
-            minval = min(vals)
-            # Find the minimum value for this row and subtract that minimum from every element.
-            for j in range(n):
-                if self.C[i][j] is not DISALLOWED:
-                    self.C[i][j] -= minval
+        # Detect rows that are entirely DISALLOWED (all NaN)
+        all_nan = np.isnan(self.C).all(axis=1)
+        if np.any(all_nan):
+            first_bad = int(np.where(all_nan)[0][0])
+            raise UnsolvableMatrixError(f"Row {first_bad} is entirely DISALLOWED.")
+
+        # Compute row-wise minima ignoring NaNs and subtract via broadcasting.
+        row_mins = np.nanmin(self.C, axis=1)  # shape (n,)
+        # Subtract per-row minima; keep DISALLOWED (NaN) entries as NaN
+        self.C = np.where(np.isnan(self.C), np.nan, self.C - row_mins[:, None])
         return 2
 
     def __step2(self) -> int:
         """Star uncovered zeros that have no starred zero in their row or column."""
-        n = self.n
-        for i in range(n):
-            for j in range(n):
-                if (self.C[i][j] == 0) and (not self.col_covered[j]) and (not self.row_covered[i]):
-                    self.marked[i][j] = STARRED
+        for i in range(self.n):
+            for j in range(self.n):
+                if (self.C[i, j] == 0) and (not self.col_covered[j]) and (not self.row_covered[i]):
+                    self.marked[i, j] = STARRED
                     self.col_covered[j] = True
                     self.row_covered[i] = True
                     break
 
-        self.__clear_covers()
+        self.__reset_covers()
         return 3
 
     def __step3(self) -> int:
@@ -180,15 +128,11 @@ class Munkres:
         If K columns are covered, the starred zeros describe a complete set of unique
         assignments. In this case, go to DONE; otherwise go to Step 4.
         """
-        n = self.n
-        count = 0
-        for i in range(n):
-            for j in range(n):
-                if self.marked[i][j] == STARRED and not self.col_covered[j]:
-                    self.col_covered[j] = True
-                    count += 1
+        starred_cols = np.any(self.marked == STARRED, axis=0)
+        self.col_covered[starred_cols] = True
+        count = np.sum(starred_cols)
 
-        return 7 if count >= n else 4
+        return 7 if count >= self.n else 4
 
     def __step4(self) -> int:
         """Prime uncovered zeros and adjust covers until none remain.
@@ -209,7 +153,7 @@ class Munkres:
                 done = True
                 step = 6
             else:
-                self.marked[row][col] = PRIMED
+                self.marked[row, col] = PRIMED
                 star_col = self.__find_star_in_row(row)
                 if star_col >= 0:
                     col = star_col
@@ -236,26 +180,26 @@ class Munkres:
         """
         count = 0
         path = self.path
-        path[count][0] = self.Z0_r
-        path[count][1] = self.Z0_c
+        path[count, 0] = self.Z0_r
+        path[count, 1] = self.Z0_c
         done = False
         while not done:
-            row = self.__find_star_in_col(path[count][1])
+            row = self.__find_star_in_col(int(path[count, 1]))
             if row >= 0:
                 count += 1
-                path[count][0] = row
-                path[count][1] = path[count - 1][1]
+                path[count, 0] = row
+                path[count, 1] = path[count - 1, 1]
             else:
                 done = True
 
             if not done:
-                col = self.__find_prime_in_row(path[count][0])
+                col = self.__find_prime_in_row(int(path[count, 0]))
                 count += 1
-                path[count][0] = path[count - 1][0]
-                path[count][1] = col
+                path[count, 0] = path[count - 1, 0]
+                path[count, 1] = col
 
         self.__convert_path(path, count)
-        self.__clear_covers()
+        self.__reset_covers()
         self.__erase_primes()
         return 3
 
@@ -264,37 +208,27 @@ class Munkres:
 
         Return to Step 4 without altering any stars, primes, or covered lines.
         """
-        minval = self.__find_smallest()
-        events = 0  # track actual changes to matrix
-        for i in range(self.n):
-            for j in range(self.n):
-                if self.C[i][j] is DISALLOWED:
-                    continue
-                if self.row_covered[i]:
-                    self.C[i][j] += minval
-                    events += 1
-                if not self.col_covered[j]:
-                    self.C[i][j] -= minval
-                    events += 1
-                if self.row_covered[i] and not self.col_covered[j]:
-                    events -= 2  # change reversed, no real difference
+        # Create broadcasting masks
+        row_mask = self.row_covered[:, np.newaxis]  # Shape (n, 1)
+        col_mask = self.col_covered[np.newaxis, :]  # Shape (1, n)
+        valid_mask = ~np.isnan(self.C)
+
+        minval = np.min(self.C[~row_mask & ~col_mask & valid_mask])
+
+        # Track actual changes
+        events = np.sum(valid_mask & row_mask, dtype=np.int32) + np.sum(
+            valid_mask & ~col_mask, dtype=np.int32
+        )
+        events -= np.sum(valid_mask & row_mask & ~col_mask, dtype=np.int32) * 2
+
         if events == 0:
             raise UnsolvableMatrixError("Matrix cannot be solved!")
-        return 4
 
-    def __find_smallest(self) -> AnyNum:
-        """Find the smallest uncovered value in the matrix."""
-        minval: AnyNum = sys.maxsize
-        for i in range(self.n):
-            for j in range(self.n):
-                if (
-                    (not self.row_covered[i])
-                    and (not self.col_covered[j])
-                    and self.C[i][j] is not DISALLOWED
-                    and minval > self.C[i][j]
-                ):
-                    minval = self.C[i][j]
-        return minval
+        # Vectorized matrix adjustment
+        self.C[valid_mask & row_mask] += minval  # type: ignore[misc]
+        self.C[valid_mask & ~col_mask] -= minval  # type: ignore[misc]
+
+        return 4
 
     def __find_a_zero(self, i0: int = 0, j0: int = 0) -> tuple[int, int]:
         """Find the first uncovered element with value 0."""
@@ -307,7 +241,7 @@ class Munkres:
         while not done:
             j = j0
             while True:
-                if (self.C[i][j] == 0) and (not self.row_covered[i]) and (not self.col_covered[j]):
+                if (self.C[i, j] == 0) and (not self.row_covered[i]) and (not self.col_covered[j]):
                     row = i
                     col = j
                     done = True
@@ -325,63 +259,65 @@ class Munkres:
 
         Returns -1 if that row has no starred element.
         """
-        col = -1
-        for j in range(self.n):
-            if self.marked[row][j] == STARRED:
-                col = j
-                break
-
-        return col
+        cols = np.where(self.marked[row] == STARRED)[0]
+        return int(cols[0]) if len(cols) > 0 else -1
 
     def __find_star_in_col(self, col: int) -> int:
         """Return the row index of the first starred element in the column.
 
         Returns -1 if that column has no starred element.
         """
-        row = -1
-        for i in range(self.n):
-            if self.marked[i][col] == STARRED:
-                row = i
-                break
-
-        return row
+        rows = np.where(self.marked[:, col] == STARRED)[0]
+        return int(rows[0]) if len(rows) > 0 else -1
 
     def __find_prime_in_row(self, row: int) -> int:
         """Return the column index of the first primed element in the row.
 
         Returns -1 if that row has no primed element.
         """
-        col = -1
-        for j in range(self.n):
-            if self.marked[row][j] == PRIMED:
-                col = j
-                break
+        cols = np.where(self.marked[row] == PRIMED)[0]
+        return int(cols[0]) if len(cols) > 0 else -1
 
-        return col
-
-    def __convert_path(self, path: Sequence[Sequence[int]], count: int) -> None:
+    def __convert_path(self, path: IndexMatrix, count: int) -> None:
         for i in range(count + 1):
-            if self.marked[path[i][0]][path[i][1]] == STARRED:
-                self.marked[path[i][0]][path[i][1]] = 0
+            if self.marked[path[i, 0], path[i, 1]] == STARRED:
+                self.marked[path[i, 0], path[i, 1]] = 0
             else:
-                self.marked[path[i][0]][path[i][1]] = STARRED
+                self.marked[path[i, 0], path[i, 1]] = STARRED
 
-    def __clear_covers(self) -> None:
+    def __reset_covers(self) -> None:
         """Clear all covered matrix cells."""
-        for i in range(self.n):
-            self.row_covered[i] = False
-            self.col_covered[i] = False
+        self.row_covered = np.zeros(self.n, dtype=bool)
+        self.col_covered = np.zeros(self.n, dtype=bool)
 
     def __erase_primes(self) -> None:
         """Erase all prime markings."""
-        for i in range(self.n):
-            for j in range(self.n):
-                if self.marked[i][j] == PRIMED:
-                    self.marked[i][j] = 0
+        self.marked[self.marked == PRIMED] = 0
 
 
-def make_cost_matrix(
-    profit_matrix: MatrixLike, inversion_function: Callable[[AnyNum], AnyNum] | None = None
+def pad_matrix(matrix: Matrix, pad_value: float = 0) -> Matrix:
+    """Pad a possibly non-square matrix to make it square.
+
+    Args:
+        matrix: The matrix to pad.
+        pad_value: The value to use for padding. Defaults to 0.
+
+    Returns:
+        The padded square matrix.
+    """
+    rows, cols = matrix.shape
+    size = max(rows, cols)
+
+    # Pad to square matrix
+    if rows == size and cols == size:
+        return matrix
+
+    pad_width = ((0, size - rows), (0, size - cols))
+    return np.pad(matrix, pad_width, mode="constant", constant_values=pad_value)
+
+
+def make_cost_matrix[T: int | float](
+    profit_matrix: ArrayLike, inversion_function: Callable[[T], T] | None = None
 ) -> Matrix:
     """Create a cost matrix from a profit matrix.
 
@@ -398,23 +334,19 @@ def make_cost_matrix(
         from munkres import Munkres
         cost_matrix = Munkres.make_cost_matrix(matrix, lambda x : sys.maxsize - x)
 
-    **Parameters**
+    Args:
+        profit_matrix: The matrix to convert from profit to cost values.
+        inversion_function: The function to use to invert each entry in the profit matrix.
 
-    - `profit_matrix` (list of lists of numbers): The matrix to convert from
-       profit to cost values.
-    - `inversion_function` (`function`): The function to use to invert each
-       entry in the profit matrix.
-
-    **Returns**
-
-    A new matrix representing the inversion of `profix_matrix`.
+    Returns:
+        A new matrix representing the inversion of `profit_matrix`.
     """
+    arr = np.asarray(profit_matrix)
+    if arr.ndim != 2:  # noqa: PLR2004
+        raise ValueError("Input matrix must be 2D.")
+
     if inversion_function is None:
-        maximum = max(max(row) for row in profit_matrix)
+        maximum = np.max(arr)
+        return maximum - arr  # type: ignore[no-any-return]
 
-        def default_inversion(value: AnyNum, /, max_value: AnyNum = maximum) -> AnyNum:
-            return max_value - value
-
-        inversion_function = default_inversion
-
-    return [[inversion_function(value) for value in row] for row in profit_matrix]
+    return np.vectorize(inversion_function)(arr)  # type: ignore[no-any-return]
