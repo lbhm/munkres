@@ -1,17 +1,4 @@
-Munkres implementation for Python
----------------------------------
-
-**Abandonware Alert:** I am no longer maintaining this package. If you
-would like to take over ownership of it, please contact me or open an
-issue, and I will gladly hand it off to you and link to your version in
-this README.
-
-<a href="https://pypi.python.org/pypi/munkres" target="_blank">
-<img src="https://img.shields.io/pypi/v/munkres.png">
-</a>
-<a href="https://travis-ci.org/bmc/munkres">
-<img src="https://travis-ci.org/bmc/munkres.svg?branch=master"/>
-</a>
+# Munkres
 
 ## Introduction
 
@@ -23,7 +10,7 @@ job, and it figures out the least-cost solution, choosing a single item
 from each row and column in the matrix, such that no row and no column are
 used more than once.
 
-This particular implementation is based on 
+This particular implementation is based on
 <https://csclab.murraystate.edu/~bob.pilgrim/445/munkres.html>.
 
 [Hungarian algorithm]: https://en.wikipedia.org/wiki/Hungarian_algorithm
@@ -32,7 +19,7 @@ See the docs on the [project page][] for more details.
 
 **WARNING**: As of version 1.1.0, _munkres_ no longer supports Python 2.
 If you need to use this package with Python 2, install an earlier version.
-See [the installation instructions](http://software.clapper.org/munkres/#installing) 
+See [the installation instructions](http://software.clapper.org/munkres/#installing)
 for details.
 
 [project page]: https://software.clapper.org/munkres/
@@ -40,6 +27,7 @@ for details.
 ## Copyright
 
 &copy; 2008-2019 Brian M. Clapper
+&copy; 2025 Lennart Behme
 
 ## License
 
