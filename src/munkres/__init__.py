@@ -1,3 +1,10 @@
-from .lib import DISALLOWED, Munkres, UnsolvableMatrix, make_cost_matrix
+from .lib import DISALLOWED, Matrix, MatrixLike, Munkres, UnsolvableMatrixError, make_cost_matrix
 
-__all__ = ["DISALLOWED", "Munkres", "UnsolvableMatrix", "make_cost_matrix"]
+__all__ = [
+    "DISALLOWED",
+    "Matrix",
+    "MatrixLike",
+    "Munkres",
+    "UnsolvableMatrixError",
+    "make_cost_matrix",
+]

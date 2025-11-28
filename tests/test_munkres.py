@@ -1,30 +1,32 @@
+import sys
+
 import pytest
 
-from munkres import DISALLOWED, Munkres, UnsolvableMatrix, make_cost_matrix
+from munkres import DISALLOWED, MatrixLike, Munkres, UnsolvableMatrixError, make_cost_matrix
 
 m = Munkres()
 
 
-def _get_cost(matrix):
+def _get_cost(matrix: MatrixLike) -> int | float:
     indices = m.compute(matrix)
-    return sum([matrix[row][column] for row, column in indices])
+    return sum(matrix[row][column] for row, column in indices)
 
 
-def test_documented_example():
+def test_documented_example() -> None:
     """Test the matrix in the documented example."""
     matrix = [[5, 9, 1], [10, 3, 2], [8, 7, 4]]
     cost = _get_cost(matrix)
-    assert cost == 12
+    assert cost == pytest.approx(12)
 
 
-def float_example():
-    """Test a matrix with float values"""
+def test_float_example() -> None:
+    """Test a matrix with float values."""
     matrix = [[5.1, 9.2, 1.3], [10.4, 3.5, 2.6], [8.7, 7.8, 4.9]]
     cost = _get_cost(matrix)
     assert cost == pytest.approx(13.5)
 
 
-def test_5_x_5():
+def test_5_x_5() -> None:
     matrix = [
         [12, 9, 27, 10, 23],
         [7, 13, 13, 30, 19],
@@ -33,10 +35,10 @@ def test_5_x_5():
         [16, 16, 24, 6, 9],
     ]
     cost = _get_cost(matrix)
-    assert cost == 51
+    assert cost == pytest.approx(51)
 
 
-def test_5_x_5_float():
+def test_5_x_5_float() -> None:
     matrix = [
         [12.01, 9.02, 27.03, 10.04, 23.05],
         [7.06, 13.07, 13.08, 30.09, 19.1],
@@ -48,7 +50,7 @@ def test_5_x_5_float():
     assert cost == pytest.approx(51.65)
 
 
-def test_10_x_10():
+def test_10_x_10() -> None:
     matrix = [
         [37, 34, 29, 26, 19, 8, 9, 23, 19, 29],
         [9, 28, 20, 8, 18, 20, 14, 33, 23, 14],
@@ -62,10 +64,10 @@ def test_10_x_10():
         [17, 34, 40, 10, 29, 37, 40, 3, 25, 3],
     ]
     cost = _get_cost(matrix)
-    assert cost == 66
+    assert cost == pytest.approx(66)
 
 
-def test_10_x_10_float():
+def test_10_x_10_float() -> None:
     matrix = [
         [37.001, 34.002, 29.003, 26.004, 19.005, 8.006, 9.007, 23.008, 19.009, 29.01],
         [9.011, 28.012, 20.013, 8.014, 18.015, 20.016, 14.017, 33.018, 23.019, 14.02],
@@ -82,7 +84,7 @@ def test_10_x_10_float():
     assert cost == pytest.approx(66.505)
 
 
-def test_20_x_20():
+def test_20_x_20() -> None:
     matrix = [
         [5, 4, 3, 9, 8, 9, 3, 5, 6, 9, 4, 10, 3, 5, 6, 6, 1, 8, 10, 2],
         [10, 9, 9, 2, 8, 3, 9, 9, 10, 1, 7, 10, 8, 4, 2, 1, 4, 8, 4, 8],
@@ -106,10 +108,10 @@ def test_20_x_20():
         [8, 4, 4, 9, 7, 10, 6, 2, 1, 5, 8, 5, 1, 1, 1, 9, 1, 3, 5, 3],
     ]
     cost = _get_cost(matrix)
-    assert cost == 22
+    assert cost == pytest.approx(22)
 
 
-def test_20_x_20_float():
+def test_20_x_20_float() -> None:
     matrix = [
         [
             5.0001,
@@ -562,19 +564,19 @@ def test_20_x_20_float():
     assert cost == pytest.approx(20.362, rel=1e-3)
 
 
-def test_disallowed():
+def test_disallowed() -> None:
     matrix = [[5, 9, DISALLOWED], [10, DISALLOWED, 2], [8, DISALLOWED, 4]]
     cost = _get_cost(matrix)
-    assert cost == 19
+    assert cost == pytest.approx(19)
 
 
-def test_disallowed_float():
+def test_disallowed_float() -> None:
     matrix = [[5.1, 9.2, DISALLOWED], [10.3, DISALLOWED, 2.4], [8.5, DISALLOWED, 4.6]]
     cost = _get_cost(matrix)
     assert cost == pytest.approx(20.1)
 
 
-def test_profit():
+def test_profit() -> None:
     profit_matrix = [
         [94, 66, 100, 18, 48],
         [51, 63, 97, 79, 11],
@@ -582,15 +584,13 @@ def test_profit():
         [59, 43, 97, 88, 48],
         [52, 19, 89, 60, 60],
     ]
-    import sys
-
     cost_matrix = make_cost_matrix(profit_matrix, lambda cost: sys.maxsize - cost)
     indices = m.compute(cost_matrix)
-    profit = sum([profit_matrix[row][column] for row, column in indices])
-    assert profit == 392
+    profit = sum(profit_matrix[row][column] for row, column in indices)
+    assert profit == pytest.approx(392)
 
 
-def test_profit_float():
+def test_profit_float() -> None:
     profit_matrix = [
         [94.01, 66.02, 100.03, 18.04, 48.05],
         [51.06, 63.07, 97.08, 79.09, 11.1],
@@ -598,15 +598,13 @@ def test_profit_float():
         [59.16, 43.17, 97.18, 88.19, 48.2],
         [52.21, 19.22, 89.23, 60.24, 60.25],
     ]
-    import sys
-
     cost_matrix = make_cost_matrix(profit_matrix, lambda cost: sys.maxsize - cost)
     indices = m.compute(cost_matrix)
-    profit = sum([profit_matrix[row][column] for row, column in indices])
+    profit = sum(profit_matrix[row][column] for row, column in indices)
     assert profit == pytest.approx(362.65)
 
 
-def test_irregular():
+def test_irregular() -> None:
     matrix = [
         [12, 26, 17],
         [49, 43, 36, 10, 5],
@@ -616,10 +614,10 @@ def test_irregular():
     ]
 
     cost = _get_cost(matrix)
-    assert cost == 43
+    assert cost == pytest.approx(43)
 
 
-def test_irregular_float():
+def test_irregular_float() -> None:
     matrix = [
         [12.01, 26.02, 17.03],
         [49.04, 43.05, 36.06, 10.07, 5.08],
@@ -632,7 +630,7 @@ def test_irregular_float():
     assert cost == pytest.approx(43.42)
 
 
-def test_rectangular():
+def test_rectangular() -> None:
     matrix = [
         [34, 26, 17, 12],
         [43, 43, 36, 10],
@@ -644,11 +642,11 @@ def test_rectangular():
     padded_matrix = m.pad_matrix(matrix, 0)
     padded_cost = _get_cost(padded_matrix)
     cost = _get_cost(matrix)
-    assert padded_cost == cost
-    assert cost == 70
+    assert padded_cost == pytest.approx(cost)
+    assert cost == pytest.approx(70)
 
 
-def test_rectangular_float():
+def test_rectangular_float() -> None:
     matrix = [
         [34.01, 26.02, 17.03, 12.04],
         [43.05, 43.06, 36.07, 10.08],
@@ -664,17 +662,17 @@ def test_rectangular_float():
     assert cost == pytest.approx(70.42)
 
 
-def test_unsolvable():
-    with pytest.raises(UnsolvableMatrix):
-        matrix = [[5, 9, DISALLOWED], [10, DISALLOWED, 2], [DISALLOWED, DISALLOWED, DISALLOWED]]
+def test_unsolvable() -> None:
+    matrix = [[5, 9, DISALLOWED], [10, DISALLOWED, 2], [DISALLOWED, DISALLOWED, DISALLOWED]]
+    with pytest.raises(UnsolvableMatrixError):
         m.compute(matrix)
 
 
-def test_unsolvable_float():
-    with pytest.raises(UnsolvableMatrix):
-        matrix = [
-            [5.1, 9.2, DISALLOWED],
-            [10.3, DISALLOWED, 2.4],
-            [DISALLOWED, DISALLOWED, DISALLOWED],
-        ]
+def test_unsolvable_float() -> None:
+    matrix = [
+        [5.1, 9.2, DISALLOWED],
+        [10.3, DISALLOWED, 2.4],
+        [DISALLOWED, DISALLOWED, DISALLOWED],
+    ]
+    with pytest.raises(UnsolvableMatrixError):
         m.compute(matrix)
