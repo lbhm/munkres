@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import pytest
 
 from munkres import DISALLOWED, MatrixLike, Munkres, UnsolvableMatrixError, make_cost_matrix
@@ -556,11 +557,9 @@ def test_20_x_20_float() -> None:
         ],
     ]
     cost = _get_cost(matrix)
-    """
-    Here, it becomes mandatory to set "places" argument, otherwise test might
-    fails. It happens because float values in this example have more number of
-    digits after decimal point than other float examples.
-    """
+    # Here, it becomes mandatory to set "places" argument, otherwise test might fail.
+    # It happens because float values in this example have more number of digits after
+    # decimal point than other float examples.
     assert cost == pytest.approx(20.362, rel=1e-3)
 
 
@@ -604,32 +603,6 @@ def test_profit_float() -> None:
     assert profit == pytest.approx(362.65)
 
 
-def test_irregular() -> None:
-    matrix = [
-        [12, 26, 17],
-        [49, 43, 36, 10, 5],
-        [97, 9, 66, 34],
-        [52, 42, 19, 36],
-        [15, 93, 55, 80],
-    ]
-
-    cost = _get_cost(matrix)
-    assert cost == pytest.approx(43)
-
-
-def test_irregular_float() -> None:
-    matrix = [
-        [12.01, 26.02, 17.03],
-        [49.04, 43.05, 36.06, 10.07, 5.08],
-        [97.09, 9.1, 66.11, 34.12],
-        [52.13, 42.14, 19.15, 36.16],
-        [15.17, 93.18, 55.19, 80.2],
-    ]
-
-    cost = _get_cost(matrix)
-    assert cost == pytest.approx(43.42)
-
-
 def test_rectangular() -> None:
     matrix = [
         [34, 26, 17, 12],
@@ -639,7 +612,7 @@ def test_rectangular() -> None:
         [15, 93, 55, 80],
     ]
 
-    padded_matrix = m.pad_matrix(matrix, 0)
+    padded_matrix = m.pad_matrix(np.asarray(matrix), 0)
     padded_cost = _get_cost(padded_matrix)
     cost = _get_cost(matrix)
     assert padded_cost == pytest.approx(cost)
@@ -655,7 +628,7 @@ def test_rectangular_float() -> None:
         [15.17, 93.18, 55.19, 80.2],
     ]
 
-    padded_matrix = m.pad_matrix(matrix, 0)
+    padded_matrix = m.pad_matrix(np.asarray(matrix), 0)
     padded_cost = _get_cost(padded_matrix)
     cost = _get_cost(matrix)
     assert padded_cost == pytest.approx(cost)

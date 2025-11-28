@@ -9,7 +9,7 @@ description = "Munkres (Hungarian) algorithm for the Assignment Problem"
 readme = "README.md"
 authors = [
     { name = "Brian Clapper", email = "bmc@clapper.org" },
-    { name = "Lennart Behme", email = "lennart.behme@tu-berlin.de"}
+    { name = "Lennart Behme", email = "lennart.behme@tu-berlin.de" },
 ]
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -22,22 +22,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = [
-    "numpy >= 2.0",
-]
+dependencies = ["numpy >= 2.0"]
 
 [project.urls]
-Homepage = "https://TODO"
-
-
+Homepage = "https://github.com/lbhm/munkres"
+Documentation = "https://software.clapper.org/munkres/api/index.html"
 
 [dependency-groups]
-dev = [
-    "mypy>=1.15.0",
-    "pdoc>=15.0",
-    "pre-commit>=4.2.0",
-    "pytest>=9.0.1",
-]
+dev = ["mypy>=1.15.0", "pdoc>=15.0", "pre-commit>=4.2.0", "pytest>=9.0.1"]
 
 [tool.ruff]
 line-length = 99
