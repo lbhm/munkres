@@ -1,5 +1,10 @@
 # Munkres
 
+This repository contains a fork of the `munkres` packages by Brian M. Clapper.
+The original repository can be found at <https://github.com/bmc/munkres>.
+The fork is API compatible with the original package, so the documentation at
+<https://software.clapper.org/munkres/api/index.html> still applies.
+
 ## Introduction
 
 The Munkres module provides an O(n^3) implementation of the Munkres algorithm
@@ -17,12 +22,18 @@ This particular implementation is based on
 
 See the docs on the [project page][] for more details.
 
-**WARNING**: As of version 1.1.0, _munkres_ no longer supports Python 2.
-If you need to use this package with Python 2, install an earlier version.
-See [the installation instructions](http://software.clapper.org/munkres/#installing)
-for details.
-
 [project page]: https://software.clapper.org/munkres/
+
+## Installation
+
+The fork is not published on PyPI. You can install it directly from the repository
+using `pip` or `uv`:
+
+```bash
+pip install git+https://github.com/lbhm/munkres
+# or
+uv pip install git+https://github.com/lbhm/munkres
+```
 
 ## Copyright
 
