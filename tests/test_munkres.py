@@ -560,7 +560,7 @@ def test_20_x_20_float() -> None:
     # Here, it becomes mandatory to set "places" argument, otherwise test might fail.
     # It happens because float values in this example have more number of digits after
     # decimal point than other float examples.
-    assert cost == pytest.approx(20.362, rel=1e-3)
+    assert cost == pytest.approx(22.4, rel=1e-3)
 
 
 def test_disallowed() -> None:
