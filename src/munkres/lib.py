@@ -185,7 +185,7 @@ class Munkres:
         path[count, 1] = self.Z0_c
         done = False
         while not done:
-            row = self.__find_star_in_col(path[count, 1])
+            row = self.__find_star_in_col(int(path[count, 1]))
             if row >= 0:
                 count += 1
                 path[count, 0] = row
@@ -194,7 +194,7 @@ class Munkres:
                 done = True
 
             if not done:
-                col = self.__find_prime_in_row(path[count, 0])
+                col = self.__find_prime_in_row(int(path[count, 0]))
                 count += 1
                 path[count, 0] = path[count - 1, 0]
                 path[count, 1] = col
