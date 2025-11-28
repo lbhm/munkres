@@ -7,17 +7,13 @@ solving the Assignment Problem.
 For complete usage documentation, see https://software.clapper.org/munkres/.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
-type AnyNum = int | float
-type Matrix = NDArray[np.floating | np.integer]
-type MatrixLike = Sequence[Sequence[AnyNum]] | NDArray[np.floating | np.integer]
-type IntMatrix = NDArray[np.signedinteger]
-
-type NMatrix = np.ndarray[tuple[int, int], np.dtype[np.floating | np.integer]]
+type IntMatrix = np.ndarray[tuple[int, int], np.dtype[np.int32]]
+type Matrix = np.ndarray[tuple[int, int], np.dtype[np.floating | np.integer]]
 
 
 DISALLOWED = float("nan")
@@ -35,20 +31,16 @@ class Munkres:
     See the module documentation for usage instructions and background.
     """
 
-    def __init__(self) -> None:
-        """Initialize the solver state."""
-        self.C: Matrix = np.array([])
-        self.n = 0
-        self.Z0_r = 0
-        self.Z0_c = 0
-        self.marked: IntMatrix = np.array([], dtype=int)
-        self.path: IntMatrix = np.array([], dtype=int)
-        self.original_length = 0
-        self.original_width = 0
+    C: Matrix
+    n: int
+    Z0_r: int
+    Z0_c: int
+    marked: IntMatrix
+    path: IntMatrix
+    row_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
+    col_covered: np.ndarray[tuple[int], np.dtype[np.bool_]]
 
-        self.__reset_covers()
-
-    def pad_matrix(self, matrix: NMatrix, pad_value: int = 0) -> NMatrix:
+    def pad_matrix(self, matrix: Matrix, pad_value: int = 0) -> Matrix:
         """Pad a possibly non-square matrix to make it square."""
         rows, cols = matrix.shape
         size = max(rows, cols)
@@ -79,18 +71,16 @@ class Munkres:
             A list of `(row, column)` tuples that describe the lowest cost path
             through the matrix.
         """
-        cost_matrix_arr: NMatrix = np.asarray(cost_matrix, dtype=float)
+        cost_matrix_arr: Matrix = np.asarray(cost_matrix)
         if cost_matrix_arr.ndim != 2:  # noqa: PLR2004
             raise ValueError("Input matrix must be 2D.")
 
         self.C = self.pad_matrix(cost_matrix_arr)
         self.n = len(self.C)
-        self.original_length, self.original_width = cost_matrix_arr.shape
         self.Z0_r = 0
         self.Z0_c = 0
-        self.path = np.full((self.n * 2, self.n * 2), 0, dtype=int)
-        self.marked = np.full((self.n, self.n), 0, dtype=int)
-
+        self.path = np.full((self.n * 2, 2), 0, dtype=np.int32)
+        self.marked = np.full((self.n, self.n), 0, dtype=np.int32)
         self.__reset_covers()
 
         done = False
@@ -113,12 +103,9 @@ class Munkres:
                 done = True
 
         # Look for the starred columns
-        return [
-            (i, j)
-            for i in range(self.original_length)
-            for j in range(self.original_width)
-            if self.marked[i, j] == STARRED
-        ]
+        shape = cost_matrix_arr.shape
+        rows, cols = np.where(self.marked[: shape[0], : shape[1]] == STARRED)
+        return list(zip(rows.tolist(), cols.tolist(), strict=True))
 
     def __step1(self) -> int:
         """Normalize rows by subtracting their minimum element."""
@@ -234,35 +221,27 @@ class Munkres:
 
         Return to Step 4 without altering any stars, primes, or covered lines.
         """
-        minval = self.__find_smallest()
-
         # Create broadcasting masks
         row_mask = self.row_covered[:, np.newaxis]  # Shape (n, 1)
         col_mask = self.col_covered[np.newaxis, :]  # Shape (1, n)
-        valid = ~np.isnan(self.C)
+        valid_mask = ~np.isnan(self.C)
+
+        minval = np.min(self.C[~row_mask & ~col_mask & valid_mask])
 
         # Track actual changes
-        events = np.sum(valid & row_mask) + np.sum(valid & ~col_mask)
-        events -= np.sum(valid & row_mask & ~col_mask) * 2
+        events = np.sum(valid_mask & row_mask, dtype=np.int32) + np.sum(
+            valid_mask & ~col_mask, dtype=np.int32
+        )
+        events -= np.sum(valid_mask & row_mask & ~col_mask, dtype=np.int32) * 2
 
         if events == 0:
             raise UnsolvableMatrixError("Matrix cannot be solved!")
 
         # Vectorized matrix adjustment
-        self.C[valid & row_mask] += minval
-        self.C[valid & ~col_mask] -= minval
+        self.C[valid_mask & row_mask] += minval  # type: ignore[misc]
+        self.C[valid_mask & ~col_mask] -= minval  # type: ignore[misc]
 
         return 4
-
-    def __find_smallest(self) -> AnyNum:
-        """Find the smallest uncovered value in the matrix."""
-        # Create combined mask for uncovered, valid elements
-        row_mask = ~self.row_covered[:, np.newaxis]
-        col_mask = ~self.col_covered[np.newaxis, :]
-        valid_mask = ~np.isnan(self.C)
-        mask = row_mask & col_mask & valid_mask
-
-        return float(np.min(self.C[mask]))
 
     def __find_a_zero(self, i0: int = 0, j0: int = 0) -> tuple[int, int]:
         """Find the first uncovered element with value 0."""
@@ -312,7 +291,7 @@ class Munkres:
         cols = np.where(self.marked[row] == PRIMED)[0]
         return cols[0] if len(cols) > 0 else -1
 
-    def __convert_path(self, path: NDArray[np.signedinteger], count: int) -> None:
+    def __convert_path(self, path: IntMatrix, count: int) -> None:
         for i in range(count + 1):
             if self.marked[path[i, 0], path[i, 1]] == STARRED:
                 self.marked[path[i, 0], path[i, 1]] = 0
@@ -329,9 +308,9 @@ class Munkres:
         self.marked[self.marked == PRIMED] = 0
 
 
-def make_cost_matrix(
-    profit_matrix: ArrayLike, inversion_function: Callable[[AnyNum], AnyNum] | None = None
-) -> NMatrix:
+def make_cost_matrix[T: int | float](
+    profit_matrix: ArrayLike, inversion_function: Callable[[T], T] | None = None
+) -> Matrix:
     """Create a cost matrix from a profit matrix.
 
     Calls `inversion_function` to invert each profit value (defaults to
@@ -354,15 +333,12 @@ def make_cost_matrix(
     Returns:
         A new matrix representing the inversion of `profix_matrix`.
     """
-    # Convert to array for efficient operations
-    arr = np.asarray(profit_matrix, dtype=np.float64)
+    arr = np.asarray(profit_matrix)
     if arr.ndim != 2:  # noqa: PLR2004
         raise ValueError("Input matrix must be 2D.")
 
     if inversion_function is None:
         maximum = np.max(arr)
-        return maximum - arr
+        return maximum - arr  # type: ignore[no-any-return]
 
-    return np.asarray(
-        [[inversion_function(value) for value in row] for row in arr], dtype=np.float64
-    )
+    return np.asarray([[inversion_function(value) for value in row] for row in arr])

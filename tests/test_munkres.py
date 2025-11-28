@@ -1,14 +1,15 @@
 import sys
+from collections.abc import Sequence
 
 import numpy as np
 import pytest
 
-from munkres import DISALLOWED, MatrixLike, Munkres, UnsolvableMatrixError, make_cost_matrix
+from munkres import DISALLOWED, Matrix, Munkres, UnsolvableMatrixError, make_cost_matrix
 
 m = Munkres()
 
 
-def _get_cost(matrix: MatrixLike) -> int | float:
+def _get_cost(matrix: Sequence[Sequence[int | float]] | Matrix) -> int | float:
     indices = m.compute(matrix)
     return sum(matrix[row][column] for row, column in indices)
 
@@ -465,7 +466,6 @@ def test_20_x_20_float() -> None:
             7.0317,
             7.0318,
             5.0319,
-            1.032,
         ],
         [
             2.0321,
@@ -583,7 +583,7 @@ def test_profit() -> None:
         [59, 43, 97, 88, 48],
         [52, 19, 89, 60, 60],
     ]
-    cost_matrix = make_cost_matrix(profit_matrix, lambda cost: sys.maxsize - cost)
+    cost_matrix = make_cost_matrix(profit_matrix, lambda cost: np.iinfo(np.int32).max - cost)
     indices = m.compute(cost_matrix)
     profit = sum(profit_matrix[row][column] for row, column in indices)
     assert profit == pytest.approx(392)
@@ -695,7 +695,7 @@ def test_main_example_rectangular_2_float() -> None:
 
 def test_main_example_rectangular_disallowed() -> None:
     """Test rectangular matrix with DISALLOWED from main."""
-    matrix: MatrixLike = [
+    matrix: Sequence[Sequence[int | float]] = [
         [4, 5, 6, DISALLOWED],
         [1, 9, 12, 11],
         [DISALLOWED, 5, 4, DISALLOWED],
